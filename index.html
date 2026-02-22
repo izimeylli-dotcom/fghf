@@ -109,6 +109,19 @@
             color:  seagreen;
             font-weight: bold;
         }
+
+        .heart-icon {
+            stroke: #9ca3af; /* gray-400 */
+            fill: none;
+            transition: all 0.2s ease-in-out;
+        }
+        .heart-icon.wishlisted,
+        .group\\/heart:hover .heart-icon {
+            stroke: #ef4444; /* red-500 */
+        }
+        .heart-icon.wishlisted {
+            fill: #ef4444;
+        }
     </style>
 </head>
 <body class="text-gray-900">
@@ -197,7 +210,15 @@
             <h2 class="text-3xl md:text-4xl serif italic">Meine Kollektion</h2>
             <p class="text-gray-400 text-[10px] uppercase tracking-[0.3em] mt-4">Wähle Favoriten für eine unverbindliche Anfrage</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16" id="paintings-grid"></div>
+        <div class="flex justify-end mb-8">
+            <div id="filter-controls" class="flex border border-gray-200 rounded-sm p-1 text-xs uppercase tracking-widest">
+                <button onclick="setGalleryFilter('all')" id="filter-all" class="px-4 py-2 transition-colors duration-300">Alle</button>
+                <button onclick="setGalleryFilter('wishlist')" id="filter-wishlist" class="px-4 py-2 transition-colors duration-300 flex items-center gap-2">Favoriten <span id="wishlist-count-bubble" class="bg-gray-300 text-gray-700 text-[10px] rounded-full h-5 w-5 flex items-center justify-center transition-opacity">0</span></button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16" id="paintings-grid">
+            <!-- Paintings will be rendered here by JavaScript -->
+        </div>
     </section>
 
     <!-- Über mich -->
@@ -338,34 +359,68 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
         const paintings = [
-            { id: 1, title: "Water lillies", price: 50, size: "50x50cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyvsn3y/1000104349.jpg" },
-            { id: 2, title: "Coastal bloom", price: 50, size: "50x100cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104342.jpg" },
-            { id: 3, title: "The artists view", price: 40, size: "30x40cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104345.jpg" },
-            { id: 4, title: "Lonely night", price: 40, size: "30x40cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104344.jpg" },
-            { id: 5, title: "Golden swirl", price: 15, size: "14x14cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104343.jpg", sold: true }
+            { id: 1, title: "Water lillies", price: 70, size: "50x50cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyvsn3y/1000104349.jpg" },
+            { id: 2, title: "Coastal bloom", price: 90, size: "50x100cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104342.jpg" },
+            { id: 3, title: "The artists view", price: 50, size: "30x40cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104345.jpg", sold: true },
+            { id: 4, title: "Lonely night", price: 50, size: "30x40cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104344.jpg" },
+            { id: 5, title: "Golden swirl", price: 20, size: "14x14cm", img: "https://uploads.onecompiler.io/445ndr3tz/44dyw7x69/1000104343.jpg", sold: true },
+            { id: 6, title: "The quiet pond", price: 30, size: "18x24cm", img: "https://uploads.onecompiler.io/445ndr3tz/44eb5xhbu/1000104615.jpg"},
+            
         ];
 
         let cart = [];
+        let wishlist = [];
+        let galleryFilter = 'all'; // 'all' or 'wishlist'
 
         function renderGallery() {
             const grid = document.getElementById('paintings-grid');
-            grid.innerHTML = paintings.map((p) => `
-                <div class="reveal group ${p.sold ? 'opacity-60' : ''}">
+            const filteredPaintings = galleryFilter === 'wishlist'
+                ? paintings.filter(p => wishlist.includes(p.id))
+                : paintings;
+
+            // Update filter button styles
+            document.getElementById('filter-all').classList.toggle('bg-gray-100', galleryFilter === 'all');
+            document.getElementById('filter-all').classList.toggle('text-[--accent]', galleryFilter === 'all');
+            document.getElementById('filter-wishlist').classList.toggle('bg-gray-100', galleryFilter === 'wishlist');
+            document.getElementById('filter-wishlist').classList.toggle('text-[--accent]', galleryFilter === 'wishlist');
+            
+            // Update wishlist count bubble
+            const countBubble = document.getElementById('wishlist-count-bubble');
+            countBubble.textContent = wishlist.length;
+            countBubble.classList.toggle('opacity-0', wishlist.length === 0);
+
+            if (filteredPaintings.length === 0) {
+                grid.innerHTML = `<div class="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 text-gray-500 italic">
+                    ${galleryFilter === 'wishlist' ? 'Du hast noch keine Favoriten markiert.<br>Klicke auf das Herz-Symbol bei einem Kunstwerk, um es hier zu speichern.' : 'Keine Kunstwerke gefunden.'}
+                </div>`;
+            } else {
+                grid.innerHTML = filteredPaintings.map((p) => {
+                    const isWishlisted = wishlist.includes(p.id);
+                    return `
+                <div class="reveal group ${p.sold ? 'opacity-60' : ''}" data-id="${p.id}">
                     <div class="relative overflow-hidden aspect-square mb-6 bg-gray-100 rounded-sm">
                         <img src="${p.img}" alt="${p.title}" class="w-full h-full object-cover transition-transform duration-[1.5s] lg:group-hover:scale-110">
                         <div class="image-overlay absolute inset-0 flex flex-col justify-end lg:justify-center p-4 lg:opacity-0 cursor-zoom-in" onclick="openLightbox(${p.id})">
                             ${p.sold ? `<button disabled onclick="event.stopPropagation()" class="bg-gray-400 text-white w-full py-3 lg:py-4 text-[9px] uppercase tracking-[0.3em] cursor-not-allowed shadow-xl lg:transform lg:translate-y-8 lg:group-hover:translate-y-0">Verkauft</button>` : `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="bg-white/95 text-black w-full py-3 lg:py-4 text-[9px] uppercase tracking-[0.3em] hover:bg-black hover:text-white transition-all shadow-xl lg:transform lg:translate-y-8 lg:group-hover:translate-y-0">In den Korb</button>`}
                         </div>
                     </div>
-                    <div class="flex justify-between items-start px-1">
+                    <div class="flex justify-between items-start px-1 gap-4">
                         <div>
                             <h3 class="serif text-lg md:text-xl mb-1">${p.title}</h3>
                             <p class="text-[9px] text-gray-400 uppercase tracking-[0.2em] font-light">${p.size}</p>
                         </div>
-                        <p class="text-sm font-medium text-[--accent] ${p.sold ? 'line-through text-gray-400' : ''}">${p.price} €</p>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <p class="text-sm font-medium text-[--accent] ${p.sold ? 'line-through text-gray-400' : ''}">${p.price} €</p>
+                            <button onclick="toggleWishlist(${p.id})" title="Zu Favoriten hinzufügen" class="group/heart relative top-[-2px]">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover/heart:scale-125 heart-icon ${isWishlisted ? 'wishlisted' : ''}" viewBox="0 0 24 24" stroke-width="1.5">
+                                   <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
+            }
             setTimeout(handleReveal, 100);
         }
 
@@ -373,6 +428,26 @@ window.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.reveal').forEach(el => {
                 if (el.getBoundingClientRect().top < window.innerHeight - 50) el.classList.add('active');
             });
+        }
+
+        function toggleWishlist(id) {
+            const index = wishlist.indexOf(id);
+            const painting = paintings.find(p => p.id === id);
+
+            if (index > -1) {
+                wishlist.splice(index, 1);
+                showToast(`"${painting.title}" von Favoriten entfernt`);
+            } else {
+                wishlist.push(id);
+                showToast(`"${painting.title}" zu Favoriten hinzugefügt`);
+            }
+            localStorage.setItem('wishlist', JSON.stringify(wishlist));
+            renderGallery();
+        }
+
+        function setGalleryFilter(filter) {
+            galleryFilter = filter;
+            renderGallery();
         }
 
         function addToCart(id) {
@@ -508,7 +583,16 @@ window.addEventListener('DOMContentLoaded', () => {
             window.visualViewport.addEventListener('resize', setCartHeight);
         }
 
-        window.onload = renderGallery;
+        function initializeApp() {
+            const savedWishlist = localStorage.getItem('wishlist');
+            if (savedWishlist) {
+                wishlist = JSON.parse(savedWishlist);
+            }
+            renderGallery();
+        }
+
+        window.onload = initializeApp;
+
     </script>
 </body>
 </html>
